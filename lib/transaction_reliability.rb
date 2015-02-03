@@ -101,11 +101,9 @@ module TransactionReliability
 
         case translated
           when ConnectionLost
-            Rails.logger.error "Connection to postgres lost: #{e.class}:#{e.message}"
             ActiveRecord::Base.connection.reconnect!
             connection_lost = true
           when DeadlockDetected, SerializationFailure
-            Rails.logger.info "Transaction had concurrency failure (#{translated.class}; #{translated.message})."
           else
             raise translated
         end
@@ -117,7 +115,6 @@ module TransactionReliability
           backoff *= 2
           retry
         else
-          Rails.logger.fatal "Transaction failed after #{count} tries; giving up."
           if (connection_lost && exit_on_disconnect) || exit_on_fail
             exit
           else 

@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    transaction_reliability (0.0.1)
+    transaction_reliability (0.1.0)
       activerecord (>= 4.0.0)
 
 GEM

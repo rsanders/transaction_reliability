@@ -60,6 +60,17 @@ describe TransactionReliability do
     raise PG::ConnectionBad, "PG::ConnectionBad fake"
   end
 
+  class ActiveRecord::Base
+    def self.transaction(*args)
+      puts "calling fake .transaction() in AR::Base"
+      yield
+    end
+
+    def self.connection
+      double()
+    end
+  end
+
   context 'uncontended' do
     context 'transaction_with_retry' do
       it 'should run the block once' do
@@ -128,8 +139,17 @@ describe TransactionReliability do
         [0]
       end
 
+      let :connection do
+        double('Connection')
+      end
+
+      before do
+        ActiveRecord::Base.should_receive(:connection).at_least(1).times.and_return(connection)
+      end
+
       it 'should retry the block' do
         counter.should_receive(:doit).exactly(5).times
+        connection.should_receive(:reconnect!).at_least(1).times
 
         expect do
           TransactionReliability.with_transaction_retry(backoff: 0) do
@@ -140,7 +160,7 @@ describe TransactionReliability do
       end
 
       it 'should reconnect' do
-        ActiveRecord::Base.connection.should_receive(:reconnect!).exactly(1).times
+        connection.should_receive(:reconnect!).exactly(1).times
         counter.should_receive(:doit).exactly(2).times
 
         TransactionReliability.with_transaction_retry(backoff: 0) do
@@ -151,6 +171,8 @@ describe TransactionReliability do
       end
 
       it 'should raise ConnectionLost if unresolved' do
+        connection.should_receive(:reconnect!).at_least(1).times
+
         expect do
           TransactionReliability.with_transaction_retry(retry_count: 1, exit_on_disconnect: false) do
             fake_connection_lost
@@ -159,6 +181,8 @@ describe TransactionReliability do
       end
 
       it 'should call exit if the connection cannot be re-established and configured to exit' do
+        connection.should_receive(:reconnect!).at_least(1).times
+
         expect do
           TransactionReliability.with_transaction_retry(retry_count: 1, exit_on_disconnect: true) do
             fake_connection_lost

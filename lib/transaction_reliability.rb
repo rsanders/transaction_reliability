@@ -78,7 +78,6 @@ module TransactionReliability
       backoff             = options.fetch(:backoff,             0.25)
       exit_on_fail        = options.fetch(:exit_on_fail,       false)
       exit_on_disconnect  = options.fetch(:exit_on_disconnect,  true)
-      connection          = options[:connection] || ActiveRecord::Base.connection
 
       count               = 0
 
@@ -101,7 +100,7 @@ module TransactionReliability
 
         case translated
           when ConnectionLost
-            ActiveRecord::Base.connection.reconnect!
+            (options[:connection] || ActiveRecord::Base.connection).reconnect!
             connection_lost = true
           when DeadlockDetected, SerializationFailure
           else
